@@ -41,23 +41,6 @@ import ch.idsia.benchmark.mario.environments.Environment;
  */
 
 public class OwnAgent extends BasicMarioAIAgent implements Agent {
-    private class TimeAndDistance {
-        public int time;
-        public int distance;
-        public TimeAndDistance(int time, int distance) {
-            this.time = time;
-            this.distance = distance;
-        }
-
-        public String toString() {
-            return "time: " + time + " " + distancePassedCells;
-        }
-    }
-
-    int stopCounter = 0;
-    private TimeAndDistance previousCoordinate = new TimeAndDistance(0, 0);
-    private boolean shouldLowJump = false;
-
     public OwnAgent() {
         super("OwnAgent");
         reset();
@@ -66,10 +49,6 @@ public class OwnAgent extends BasicMarioAIAgent implements Agent {
     public void reset() {
         action = new boolean[Environment.numberOfKeys];
         action[Mario.KEY_RIGHT] = true;
-        stopCounter = 0;
-        shouldLowJump = false;
-        previousCoordinate.time = timeSpent;
-        previousCoordinate.distance = distancePassedCells;
     }
 
     private boolean isObstacle(int r, int c) {
@@ -104,10 +83,6 @@ public class OwnAgent extends BasicMarioAIAgent implements Agent {
                 && !isOverGround(marioEgoRow, marioEgoCol + 1);
     }
 
-    private boolean shouldLowJump() {
-        return shouldLowJump;
-    }
-
     private boolean isOverGround(int r, int c) {
         return isObstacle(r + 1, c)
                 || isObstacle(r + 2, c)
@@ -128,8 +103,6 @@ public class OwnAgent extends BasicMarioAIAgent implements Agent {
     }
 
     public boolean[] getAction() {
-        beginFrame();
-
         action[Mario.KEY_SPEED] = isTowardHole();
 
         if (shouldCancelJumpAndBack()) {
@@ -137,21 +110,10 @@ public class OwnAgent extends BasicMarioAIAgent implements Agent {
             action[Mario.KEY_RIGHT] = false;
             action[Mario.KEY_JUMP] = false;
             log("cancel jump back");
-        } else if (shouldLowJump) {
-            action[Mario.KEY_LEFT] = false;
-            action[Mario.KEY_RIGHT] = true;
-            action[Mario.KEY_JUMP] = false;
-            if (shouldLowJump()) {
-                action[Mario.KEY_LEFT] = true;
-                action[Mario.KEY_RIGHT] = false;
-            }
-            shouldLowJump = false;
-            log("cancel jump");
         } else if (shouldJump()) {
             action[Mario.KEY_LEFT] = false;
             action[Mario.KEY_RIGHT] = true;
             action[Mario.KEY_JUMP] = true;
-            shouldLowJump = stopCounter > 1;
             log("jump");
         } else {
             action[Mario.KEY_LEFT] = false;
@@ -160,25 +122,7 @@ public class OwnAgent extends BasicMarioAIAgent implements Agent {
             log("default");
         }
 
-        endFrame();
         return action;
-    }
-
-    private void beginFrame() {
-        if (timeSpent == previousCoordinate.time) { return; }
-
-        if (distancePassedCells == previousCoordinate.distance) {
-            stopCounter += 1;
-        } else {
-            stopCounter = 0;
-        }
-    }
-
-    private void endFrame() {
-        if (timeSpent == previousCoordinate.time) { return; }
-
-        previousCoordinate.time = timeSpent;
-        previousCoordinate.distance = distancePassedCells;
     }
 
     private void log(String message) {
