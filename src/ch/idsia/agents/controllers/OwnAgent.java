@@ -28,7 +28,9 @@
 package ch.idsia.agents.controllers;
 
 import ch.idsia.agents.Agent;
+import ch.idsia.benchmark.mario.engine.GeneralizerLevelScene;
 import ch.idsia.benchmark.mario.engine.sprites.Mario;
+import ch.idsia.benchmark.mario.engine.sprites.Sprite;
 import ch.idsia.benchmark.mario.environments.Environment;
 
 /**
@@ -38,24 +40,148 @@ import ch.idsia.benchmark.mario.environments.Environment;
  * Time: 4:03:46 AM
  */
 
-public class OwnAgent extends BasicMarioAIAgent implements Agent
-{
-int trueJumpCounter = 0;
-int trueSpeedCounter = 0;
+public class OwnAgent extends BasicMarioAIAgent implements Agent {
+    private class TimeAndDistance {
+        public int time;
+        public int distance;
+        public TimeAndDistance(int time, int distance) {
+            this.time = time;
+            this.distance = distance;
+        }
 
-public OwnAgent()
-{
-    super("OwnAgent");
-    reset();
-}
+        public String toString() {
+            return "time: " + time + " " + distancePassedCells;
+        }
+    }
 
-public void reset()
-{
-    action = new boolean[Environment.numberOfKeys];
-}
+    int stopCounter = 0;
+    private TimeAndDistance previousCoordinate = new TimeAndDistance(0, 0);
+    private boolean shouldLowJump = false;
 
-public boolean[] getAction()
-{
-    return action;
-}
+    public OwnAgent() {
+        super("OwnAgent");
+        reset();
+    }
+
+    public void reset() {
+        action = new boolean[Environment.numberOfKeys];
+        action[Mario.KEY_RIGHT] = true;
+        stopCounter = 0;
+        shouldLowJump = false;
+        previousCoordinate.time = timeSpent;
+        previousCoordinate.distance = distancePassedCells;
+    }
+
+    private boolean isObstacle(int r, int c) {
+        return getReceptiveFieldCellValue(r, c) == GeneralizerLevelScene.BRICK
+                || getReceptiveFieldCellValue(r, c) == GeneralizerLevelScene.BORDER_CANNOT_PASS_THROUGH
+                || getReceptiveFieldCellValue(r, c) == GeneralizerLevelScene.FLOWER_POT_OR_CANNON
+                || getReceptiveFieldCellValue(r, c) == GeneralizerLevelScene.LADDER;
+    }
+
+    private boolean isEmpty(int r, int c) {
+        return getReceptiveFieldCellValue(r, c) == 0;
+    }
+
+    private boolean shouldJump() {
+        if (isMarioOnGround && !isMarioAbleToJump) {
+            //着地した瞬間は再ジャンプのために一度離す必要がある
+            return false;
+        }
+        if (!isMarioOnGround) {
+            // 常にハイジャンプ
+            return true;
+        }
+        return isObstacle(marioEgoRow, marioEgoCol + 1)
+                || getEnemiesCellValue(marioEgoRow, marioEgoCol + 2) != Sprite.KIND_NONE
+                || getEnemiesCellValue(marioEgoRow, marioEgoCol + 1) != Sprite.KIND_NONE
+                || isEmpty(marioEgoRow + 1, marioEgoCol + 1);
+    }
+
+    private boolean shouldCancelJumpAndBack() {
+        if (isMarioAbleToJump || !isMarioOnGround) { return false; }
+        return isOverGround(marioEgoRow, marioEgoCol)
+                && !isOverGround(marioEgoRow, marioEgoCol + 1);
+    }
+
+    private boolean shouldLowJump() {
+        return shouldLowJump;
+    }
+
+    private boolean isOverGround(int r, int c) {
+        return isObstacle(r + 1, c)
+                || isObstacle(r + 2, c)
+                || isObstacle(r + 3, c)
+                || isObstacle(r + 4, c)
+                || isObstacle(r + 5, c)
+                || isObstacle(r + 6, c)
+                || isObstacle(r + 7, c)
+                || isObstacle(r + 8, c)
+                || isObstacle(r + 9, c);
+    }
+
+    private boolean isTowardHole() {
+        return !isOverGround(marioEgoRow, marioEgoCol + 1)
+                || !isOverGround(marioEgoRow, marioEgoCol + 2)
+                || !isOverGround(marioEgoRow, marioEgoCol + 3)
+                || !isOverGround(marioEgoRow, marioEgoCol + 4);
+    }
+
+    public boolean[] getAction() {
+        beginFrame();
+
+        action[Mario.KEY_SPEED] = isTowardHole();
+
+        if (shouldCancelJumpAndBack()) {
+            action[Mario.KEY_LEFT] = true;
+            action[Mario.KEY_RIGHT] = false;
+            action[Mario.KEY_JUMP] = false;
+            log("cancel jump back");
+        } else if (shouldLowJump) {
+            action[Mario.KEY_LEFT] = false;
+            action[Mario.KEY_RIGHT] = true;
+            action[Mario.KEY_JUMP] = false;
+            if (shouldLowJump()) {
+                action[Mario.KEY_LEFT] = true;
+                action[Mario.KEY_RIGHT] = false;
+            }
+            shouldLowJump = false;
+            log("cancel jump");
+        } else if (shouldJump()) {
+            action[Mario.KEY_LEFT] = false;
+            action[Mario.KEY_RIGHT] = true;
+            action[Mario.KEY_JUMP] = true;
+            shouldLowJump = stopCounter > 1;
+            log("jump");
+        } else {
+            action[Mario.KEY_LEFT] = false;
+            action[Mario.KEY_RIGHT] = true;
+            action[Mario.KEY_JUMP] = false;
+            log("default");
+        }
+
+        endFrame();
+        return action;
+    }
+
+    private void beginFrame() {
+        if (timeSpent == previousCoordinate.time) { return; }
+
+        if (distancePassedCells == previousCoordinate.distance) {
+            stopCounter += 1;
+        } else {
+            stopCounter = 0;
+        }
+    }
+
+    private void endFrame() {
+        if (timeSpent == previousCoordinate.time) { return; }
+
+        previousCoordinate.time = timeSpent;
+        previousCoordinate.distance = distancePassedCells;
+    }
+
+    private void log(String message) {
+        System.out.println(message);
+    }
 }
