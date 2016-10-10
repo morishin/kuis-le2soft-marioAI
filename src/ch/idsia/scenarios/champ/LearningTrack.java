@@ -77,17 +77,13 @@ private static int evaluateSubmission(MarioAIOptions marioAIOptions, LearningAge
 
 //    for(int i=0 ; i<LearningTask.getEvaluationQuota() ; i++){	//forで繰り返す???
 //    	System.out.println("世代 : "+i);
-   	learningAgent.learn(); // launches the training process. numberOfTrials happen here
-
+        learningAgent.learn(); // launches the training process. numberOfTrials happen here
 //    }
 
     Agent agent = learningAgent.getBestAgent(); // this agent will be evaluated
 
-    /* 評価のvisualize */
-    marioAIOptions.setVisualization(true);
-
-//    System.out.println("/*---------------------- finished learning --------------------*/");
-//    System.out.println("LearningTrack best agent = " + agent);
+    System.out.println("/*---------------------- finished learning --------------------*/");
+    System.out.println("LearningTrack best agent = " + agent);
 
     /* AgentをmarioAIOptionsのAgentにセット */
     marioAIOptions.setAgent(agent);
@@ -98,11 +94,11 @@ private static int evaluateSubmission(MarioAIOptions marioAIOptions, LearningAge
 
 
 
-    //System.out.println("basicTask = " + basicTask);
-    //System.out.println("agent = " + agent);
+    System.out.println("basicTask = " + basicTask);
+    System.out.println("agent = " + agent);
 
     /* １トラック終了後にスコアを画面に出力するか */
-    boolean verbose = false;
+    boolean verbose = true;
 
     /* 1トラック実行(制限時間を超えたらFalse)
      * 学習後のAgentを用いて，runSingleEpisodeメソッドで1回ステージを
@@ -212,7 +208,8 @@ public static void main(String[] args){
 	/* 学習に用いるAgentを指定 */
 
 	/* MainTask4_1.java */
-	LearningAgent learningAgent = new LearningWithGA("-lde on -i on -ltb off -ld 2 -ls 0 -le g");
+	String a = "-lde on -i on -ltb off -ld 2 -ls 0 -le g";
+	LearningAgent learningAgent = new LearningWithGA(a);
 	
 	/* MainTask4_2.java */
 	// LearningAgent learningAgent = new LearningWithGA("-lco off -lb on -le off -lhb off -lg on -ltb on -lhs off -lca on -lde on -ld 5 -ls 133829");
@@ -223,11 +220,10 @@ public static void main(String[] args){
 	System.out.println("main.learningAgent = " + learningAgent);
 
 	/* パラメータを設定する */
-	MarioAIOptions marioAIOptions = new MarioAIOptions(args);
+	MarioAIOptions marioAIOptions = new MarioAIOptions(a);
+//    marioAIOptions.setArgs(a);
+    marioAIOptions.setVisualization(false);
 	//LearningAgent learningAgent = new MLPESLearningAgent(); // Learning track competition entry goes here
-
-
-
 
 	/* 学習するステージを生成 */
 

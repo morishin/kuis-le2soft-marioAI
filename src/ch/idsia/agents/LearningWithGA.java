@@ -26,7 +26,6 @@ public class LearningWithGA implements LearningAgent{
 	private String name = "LearningWithGA";
 	private GAAgent[] agents;
 	private Agent bestAgent;
-	private String args;
 	/* 評価時最大値保持用変数 */
 	float fmax;
 
@@ -37,6 +36,9 @@ public class LearningWithGA implements LearningAgent{
 
 	/* 学習制限回数 */
 	long evaluationQuota;
+
+	private LearningTask learningTask;
+	private String args;
 
 
 	/* LearningWithGA コンストラクタ */
@@ -61,7 +63,7 @@ public class LearningWithGA implements LearningAgent{
 
 		for(int generation=0 ; generation<evaluationQuota ; generation++){
 
-			System.out.println("世代 : "+generation);
+			System.out.println("generation: " + generation);
 
 			/* 100個体の評価 */
 
@@ -91,15 +93,12 @@ public class LearningWithGA implements LearningAgent{
 
 			/* 突然変異 */
 			mutate();
-			
-			int EndEpoch = 10;
-			if( generation == EndEpoch){
-				System.out.println("Generation["+generation+"] : Playing!");
-				halfwayPlayMario(bestAgent);
-				System.out.println("Learning is stopped");
-				break;
-			}
 
+			// 10世代区切りで動きをビジュアライズ
+			if (generation % 10 == 0) {
+				halfwayPlayMario(bestAgent);
+			}
+			System.out.println("Generation["+generation+"]'s best fitness: " + ((GAAgent)bestAgent).getFitness());
 		}
 
 
@@ -111,36 +110,11 @@ public class LearningWithGA implements LearningAgent{
 	 * できたら，xmlファイルを生成する．xml生成はwriteFileメソッドで行う．
 	 */
 	private void compFit() {
-
-		/* GAAgents[i]をプレイさせる */
-		MarioAIOptions marioAIOptions = new MarioAIOptions();
-		BasicTask basicTask = new BasicTask(marioAIOptions);
-
-		/* ステージ生成 */
-		marioAIOptions.setArgs(this.args);
-
-
-	    /* プレイ画面出力するか否か */
-	    marioAIOptions.setVisualization(false);
-
 		for(int i=0 ; i<popsize ; i++){
-
-
-			/* GAAgents[i]をセット */
-			marioAIOptions.setAgent(agents[i]);
-			basicTask.setOptionsAndReset(marioAIOptions);
-
-			if ( !basicTask.runSingleEpisode(1) ){
-				System.out.println("MarioAI: out of computational time"
-				+ " per action! Agent disqualified!");
-			}
-
-			/* 評価値(距離)をセット */
-			EvaluationInfo evaluationInfo = basicTask.getEvaluationInfo();
-			agents[i].setFitness(evaluationInfo.distancePassedCells);
-
-			agents[i].setDistance(evaluationInfo.distancePassedCells);
-
+			/* GAAgents[i]をプレイさせてスコアをセット */
+			int weightedFitness = learningTask.evaluate(agents[i]);
+			agents[i].setFitness(weightedFitness);
+//			System.out.println("agent[ " + i + " ]'s fitness: " + weightedFitness);
 		}
 
 		/* 降順にソートする */
@@ -149,7 +123,7 @@ public class LearningWithGA implements LearningAgent{
 		/* 首席Agentが過去の最高評価値を超えた場合，xmlを生成． */
 		int presentBestAgentDistance = agents[0].getFitness();
 
-		System.out.println("agents[0]Fitness : "+presentBestAgentDistance +"\n"+ "agents[0].distance : " + agents[0].getDistance());
+//		System.out.println("agents[0]Fitness : "+presentBestAgentDistance +"\n"+ "agents[0].distance : " + agents[0].getDistance());
 
 		if(presentBestAgentDistance > fmax){
 			bestAgent = (Agent)agents[0].clone();	//bestAgentを更新
@@ -252,7 +226,7 @@ public class LearningWithGA implements LearningAgent{
 	}
 
 
-	private void halfwayPlayMario(Agent agent){
+	private int halfwayPlayMario(Agent agent){
 		/* GAAgents[i]をプレイさせる */
 		MarioAIOptions marioAIOptions = new MarioAIOptions();
 		BasicTask basicTask = new BasicTask(marioAIOptions);
@@ -260,9 +234,9 @@ public class LearningWithGA implements LearningAgent{
 		/* ステージ生成 */
 		marioAIOptions.setArgs(this.args);
 
-
 	    /* プレイ画面出力するか否か */
-	    marioAIOptions.setVisualization(true);
+		marioAIOptions.setVisualization(true);
+		marioAIOptions.setFPS(500);
 
 		/* GAAgents[i]をセット */
 		marioAIOptions.setAgent(agent);
@@ -270,9 +244,10 @@ public class LearningWithGA implements LearningAgent{
 
 		if ( !basicTask.runSingleEpisode(1) ){
 			System.out.println("MarioAI: out of computational time"
-			+ " per action! Agent disqualified!");
+					+ " per action! Agent disqualified!");
 		}
 
+		return basicTask.getEvaluationInfo().computeWeightedFitness();
 	}
 
 	/* 突然変異 */
@@ -367,8 +342,7 @@ public class LearningWithGA implements LearningAgent{
 
 	@Override
 	public void setLearningTask(LearningTask learningTask) {
-		// TODO 自動生成されたメソッド・スタブ
-
+		this.learningTask = learningTask;
 	}
 
 	@Override
@@ -386,5 +360,4 @@ public class LearningWithGA implements LearningAgent{
 	public void init() {
 
 	}
-
 }
